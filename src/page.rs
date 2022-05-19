@@ -1,10 +1,11 @@
 use std::path::Path;
+use crate::record::ValueToType;
 use std::error::Error;
 use std::fs;
 
 use crate::core::KEY_SIZE;
 use crate::core::VALUE_SIZE;
-use crate::row::{Row, ValueType};
+use crate::record::Record;
 
 #[derive(Debug, Clone)]
 pub struct Page {
@@ -44,8 +45,9 @@ impl Page {
         &self.data
     }
 
-    pub fn read_row_at_mut_offset(&self, offset: &mut usize) -> Row<String> {
-        let value_type = self.read_byte_at_mut_offset(offset);
+    /// Reads RECORD_SIZE bytes at `offset`
+    pub fn read_record_at_mut_offset<T: ValueToType<T>>(&self, offset: &mut usize) -> Record<T> {
+        let _value_type = self.read_byte_at_mut_offset(offset);
 
         let key: Vec<u8> = self.read_at_mut_offset(offset, KEY_SIZE)
             .iter()
@@ -53,23 +55,15 @@ impl Page {
             .map(|x| *x)
             .collect();
 
-        let value: Vec<u8> = self.read_at_mut_offset(offset, VALUE_SIZE)
+        let value_data: Vec<u8> = self.read_at_mut_offset(offset, VALUE_SIZE)
             .iter()
             .filter(|x| *x != &0x00u8)
             .map(|x| *x)
             .collect();
 
-        println!(
-             "type={}, key={}, value={}",
-             value_type,
-             String::from_utf8(key.to_vec()).unwrap(),
-             String::from_utf8(value.to_vec()).unwrap()
-        );
-
-        Row::from((
-            ValueType::Str,
+        Record::from((
             String::from_utf8(key).unwrap().trim().into(),
-            String::from_utf8(value).unwrap().trim().into()
+            value_data.to_vec()
         ))
     }
 }

@@ -9,12 +9,12 @@ pub mod core;
 pub mod node;
 pub use crate::node::Node;
 
-pub mod row;
+pub mod record;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::row::ValueType;
+    use crate::record::Record;
 
     use std::fs;
 
@@ -23,27 +23,63 @@ mod tests {
     const KEY_PADDING_DATA_LEN: usize = core::KEY_SIZE - EXAMPLE_KEY.len();
     const VALUE_PADDING_DATA_LEN: usize = core::VALUE_SIZE - EXAMPLE_VALUE.len();
 
-    #[test]
-    fn rw_page_data() {
-        let data: &mut [u8; 66] = &mut [0x00; 66];
+    fn generate_example_data() -> [u8; 64] {
+        let data: &mut [u8; 64] = &mut [0x00; 64];
 
         data[0] = 0x01;
-        data[1..=15].clone_from_slice(&[EXAMPLE_KEY, &[0u8; KEY_PADDING_DATA_LEN]].concat());
-        data[16..=31].clone_from_slice(&[EXAMPLE_VALUE, &[0u8; VALUE_PADDING_DATA_LEN]].concat());
+        data[1..=15].clone_from_slice(&[
+            EXAMPLE_KEY,
+            &[0u8; KEY_PADDING_DATA_LEN]
+        ].concat());
 
-        data[33] = 0x01;
-        data[34..=48].clone_from_slice(&[EXAMPLE_KEY, &[0u8; KEY_PADDING_DATA_LEN]].concat());
-        data[49..=64].clone_from_slice(&[EXAMPLE_VALUE, &[0u8; VALUE_PADDING_DATA_LEN]].concat());
+        data[16..=31].clone_from_slice(&[
+            EXAMPLE_VALUE,
+            &[0u8; VALUE_PADDING_DATA_LEN]
+        ].concat());
 
-        fs::write("./example-data.buf", data).unwrap();
+        data[32] = 0x01;
+
+        data[33..=47].clone_from_slice(&[
+            EXAMPLE_KEY,
+            &[0u8; KEY_PADDING_DATA_LEN]
+        ].concat());
+
+        data[48..=63].clone_from_slice(&[
+            EXAMPLE_VALUE,
+            &[0u8; VALUE_PADDING_DATA_LEN]
+        ].concat());
+
+        data.clone()
+    }
+
+    #[test]
+    fn rw_page_data() {
+        //println!("{:#?}", data);
+
+        fs::write("./example-data.buf", generate_example_data()).unwrap();
 
         let page = Page::new("./example-data.buf").unwrap();
 
         let mut offset = 0;
-        let row = page.read_row_at_mut_offset(&mut offset);
+        let record: Record<String> = page.read_record_at_mut_offset(&mut offset);
 
-        assert_eq!(row.key().as_str(), "hello");
-        assert_eq!(row.value().as_str(), "world");
-        assert_eq!(row.value_type(), &ValueType::Str)
+        assert_eq!(record.key().as_str(), "hello");
+        assert_eq!(record.value(), "world");
+    }
+
+    #[test]
+    fn node() {
+        fs::write("./example-data.buf", generate_example_data()).unwrap();
+
+        let page = Page::new("./example-data.buf").unwrap();
+
+        let node: Node<String> = Node::from_page(&page);
+
+        let records: Vec<String> = node.records()
+            .iter()
+            .map(|rec| format!("{} -> {}", rec.key(), rec.value()))
+            .collect();
+
+        println!("{}", records.join("\n"));
     }
 }
