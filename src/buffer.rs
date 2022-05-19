@@ -1,4 +1,5 @@
 use std::path::Path;
+use crate::Node;
 use crate::record::ValueToType;
 use std::error::Error;
 use std::fs;
@@ -8,11 +9,11 @@ use crate::core::VALUE_SIZE;
 use crate::record::Record;
 
 #[derive(Debug, Clone)]
-pub struct Page {
+pub struct Buffer {
     data: Vec<u8>
 }
 
-impl Page {
+impl Buffer {
     pub fn new<T: AsRef<Path>>(data_path: T) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             data: fs::read(data_path.as_ref())?
@@ -47,8 +48,6 @@ impl Page {
 
     /// Reads RECORD_SIZE bytes at `offset`
     pub fn read_record_at_mut_offset<T: ValueToType<T>>(&self, offset: &mut usize) -> Record<T> {
-        let _value_type = self.read_byte_at_mut_offset(offset);
-
         let key: Vec<u8> = self.read_at_mut_offset(offset, KEY_SIZE)
             .iter()
             .filter(|x| *x != &0x00u8)
