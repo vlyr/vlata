@@ -56,7 +56,7 @@ pub struct Record<T> {
     _marker: PhantomData<T>
 }
 
-impl<T: ValueToType<T>> Record<T> {
+impl<T: ValueToType<T> + Clone> Record<T> {
     pub fn key(&self) -> &String {
         &self.key
     }

@@ -12,7 +12,7 @@ pub struct Node<T> {
     buffer: Buffer,
 }
 
-impl<T: ValueToType<T>> Node<T> {
+impl<T: ValueToType<T> + Clone> Node<T> {
     pub fn new<P: AsRef<Path>>(data_path: P) -> Result<Self, Box<dyn Error>> {
         let buffer = Buffer::new(data_path)?;
 
@@ -30,6 +30,36 @@ impl<T: ValueToType<T>> Node<T> {
             buffer,
             records,
         })
+    }
+    
+    pub fn find<F>(&self, mut f: F) -> Option<Record<T>>
+        where F: FnMut(&Record<T>) -> bool
+    {
+        match self.records
+            .iter()
+            .find(|rec| f(rec))
+        {
+            Some(rec) => Some(Record::clone(&rec)),
+            None => None,
+        }
+    }
+
+    fn index_of<F>(&self, mut f: F) -> Option<usize>
+        where F: FnMut(&Record<T>) -> bool
+    {
+        match self.records
+            .iter()
+            .position(|rec| f(rec))
+        {
+            Some(idx) => Some(idx),
+            None => None,
+        }
+    }
+
+    pub fn delete<S: AsRef<str>>(&mut self, key: S) {
+        if let Some(idx) = self.index_of(|r| r.key() == &key.as_ref()) {
+            self.records.swap_remove(idx);
+        }
     }
 
     pub fn sort_records_by_key(&mut self) {

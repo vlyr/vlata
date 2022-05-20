@@ -15,13 +15,22 @@ pub mod record;
 mod tests {
     use super::*;
     use crate::record::Record;
-
+    use crate::record::ValueToType;
     use std::fs;
 
     const EXAMPLE_KEY: &[u8] = b"hello";
     const EXAMPLE_VALUE: &[u8] = b"world";
     const KEY_PADDING_DATA_LEN: usize = core::KEY_SIZE - EXAMPLE_KEY.len();
     const VALUE_PADDING_DATA_LEN: usize = core::VALUE_SIZE - EXAMPLE_VALUE.len();
+
+    fn print_node_records<T: ValueToType<T> + Clone + std::fmt::Display>(node: &Node<T>) {
+        let records: Vec<String> = node.records()
+            .iter()
+            .map(|rec| format!("{} -> {}", rec.key(), rec.value()))
+            .collect();
+
+        println!("{}", records.join("\n"));
+    }
 
     fn generate_example_data() -> [u8; 64] {
         let data: &mut [u8; 64] = &mut [0x00; 64];
@@ -68,31 +77,35 @@ mod tests {
     fn node() {
         let node: Node<String> = Node::new("./example-data.buf").unwrap();
 
-        let records: Vec<String> = node.records()
-            .iter()
-            .map(|rec| format!("{} -> {}", rec.key(), rec.value()))
-            .collect();
 
-        println!("{}", records.join("\n"));
-
+        print_node_records(&node);
         //assert_eq!(node.as_bytes(), generate_example_data());
     }
 
     #[test]
-    fn save_node() {
+    fn node_save() {
         let node: Node<String> = Node::new("./example-data.buf").unwrap();
         
         node.save("./example-data.buf").unwrap();
     }
 
     #[test]
-    fn insert() {
+    fn node_insert() {
         let mut node: Node<String> = Node::new("./example-data.buf").unwrap();
         
         node.insert("hello", "world".into());
-        node.insert("another", "test".into());
-
         node.sort_records_by_key();
+
+        print_node_records(&node);
+
+        node.save("./example-data.buf").unwrap();
+    }
+
+    #[test]
+    fn node_delete() {
+        let mut node: Node<String> = Node::new("./example-data.buf").unwrap();
+        
+        node.delete("hello");
 
         let records: Vec<String> = node.records()
             .iter()
@@ -100,7 +113,6 @@ mod tests {
             .collect();
 
         println!("{}", records.join("\n"));
-
 
         node.save("./example-data.buf").unwrap();
     }
